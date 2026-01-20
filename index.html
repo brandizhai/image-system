@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>影像采集与归档系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .guide-bubble {
+            background: #fff1f2;
+            border: 1px solid #fda4af;
+            color: #e11d48;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            position: relative;
+            margin-left: 10px;
+        }
+        .guide-bubble::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 5px solid transparent;
+            border-right-color: #fda4af;
+        }
+        .drop-zone {
+            border: 2px dashed #e2e8f0;
+            transition: all 0.2s;
+            min-height: 140px;
+        }
+        .drop-zone.drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .image-card {
+            cursor: grab;
+            transition: transform 0.2s;
+        }
+        .image-card:active {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <div class="bg-white border-b px-6 py-2 flex items-center space-x-4 shadow-sm">
+        <div class="flex space-x-2 text-xs text-gray-400">
+            <span>首页 ×</span>
+            <span>任务查询 ×</span>
+            <span class="text-blue-600 font-bold border-b-2 border-blue-600">保单服务 ×</span>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 shadow-sm mb-4">
+        <div class="flex items-center space-x-8">
+            <div class="flex items-center">
+                <span class="text-gray-700 font-bold mr-4">拍拍仪：</span>
+                <label class="inline-flex items-center mr-6 cursor-pointer">
+                    <input type="radio" name="mode" class="w-4 h-4 text-blue-600" checked>
+                    <span class="ml-2">临柜</span>
+                    <button onclick="simulateCapture()" class="ml-2 bg-blue-600 text-white p-1 rounded hover:bg-blue-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path></svg>
+                    </button>
+                    <div class="guide-bubble">请点击此处，拍摄临柜业务所需材料</div>
+                </label>
+
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="radio" name="mode" class="w-4 h-4 text-blue-600">
+                    <span class="ml-2">云柜</span>
+                    <button onclick="simulateCapture()" class="ml-2 bg-emerald-600 text-white p-1 rounded hover:bg-emerald-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    </button>
+                    <div class="guide-bubble">请点击此处，拍摄云柜业务所需材料</div>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-[1600px] mx-auto grid grid-cols-12 gap-6 p-6">
+        
+        <div class="col-span-3 bg-white p-4 rounded-lg shadow-sm h-[calc(100vh-250px)] flex flex-col">
+            <h3 class="font-bold text-gray-700 mb-4 flex items-center">
+                <span class="w-1 h-4 bg-blue-500 mr-2"></span>待处理影像池
+            </h3>
+            <div id="imagePool" class="flex-1 overflow-y-auto space-y-4 p-2 bg-gray-50 rounded border border-inner">
+                <p class="text-xs text-gray-400 text-center mt-10">点击上方拍照按钮采集影像<br>采集后可拖拽至右侧分类</p>
+            </div>
+        </div>
+
+        <div class="col-span-9 bg-white p-6 rounded-lg shadow-sm h-[calc(100vh-250px)] overflow-y-auto">
+            
+            <section class="mb-10">
+                <h3 class="font-bold text-lg text-gray-800 mb-4">申请人 (投保人)</h3>
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="drop-zone rounded-lg flex flex-col items-center justify-center p-4 bg-gray-50" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <span class="text-sm text-gray-500 mb-2">身份证正面</span>
+                        <div class="text-xs text-blue-400">将影像拖拽至此</div>
+                    </div>
+                    <div class="drop-zone rounded-lg flex flex-col items-center justify-center p-4 bg-gray-50" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <span class="text-sm text-gray-500 mb-2">身份证反面</span>
+                        <div class="text-xs text-blue-400">将影像拖拽至此</div>
+                    </div>
+                    <div class="drop-zone rounded-lg flex flex-col items-center justify-center p-4 bg-gray-50" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <span class="text-sm text-gray-500 mb-2">人脸正面照</span>
+                        <div class="text-xs text-blue-400">将影像拖拽至此</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mb-10">
+                <h3 class="font-bold text-lg text-gray-800 mb-4">新投保人</h3>
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="drop-zone rounded-lg flex flex-col items-center justify-center p-4 bg-gray-50" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <span class="text-sm text-gray-500 mb-2">身份证正面</span>
+                    </div>
+                    <div class="drop-zone rounded-lg flex flex-col items-center justify-center p-4 bg-gray-50" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <span class="text-sm text-gray-500 mb-2">身份证反面</span>
+                    </div>
+                    <div class="drop-zone rounded-lg flex flex-col items-center justify-center p-4 bg-gray-50" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <span class="text-sm text-gray-500 mb-2">人脸正面照</span>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h3 class="font-bold text-lg text-gray-800 mb-4">被保险人</h3>
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="drop-zone rounded-lg flex flex-col items-center justify-center p-4 bg-gray-50" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <span class="text-sm text-gray-500 mb-2">身份证正面</span>
+                    </div>
+                    <div class="drop-zone rounded-lg flex flex-col items-center justify-center p-4 bg-gray-50" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <span class="text-sm text-gray-500 mb-2">身份证反面</span>
+                    </div>
+                    <div class="drop-zone rounded-lg flex flex-col items-center justify-center p-4 bg-gray-50" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <span class="text-sm text-gray-500 mb-2">人脸正面照</span>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 w-full bg-white border-t p-4 flex justify-end space-x-4 shadow-lg">
+        <button class="px-6 py-2 border rounded text-gray-600 hover:bg-gray-100">上一步</button>
+        <button class="px-8 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 shadow-md">下一步</button>
+    </div>
+
+    <script>
+        let imgCount = 0;
+
+        // 模拟拍照功能
+        function simulateCapture() {
+            imgCount++;
+            const pool = document.getElementById('imagePool');
+            if(imgCount === 1) pool.innerHTML = ''; // 清除提示文字
+
+            const imgId = 'img_' + imgCount;
+            const card = document.createElement('div');
+            card.className = "image-card bg-white p-2 border rounded shadow-sm relative group";
+            card.draggable = true;
+            card.id = imgId;
+            card.ondragstart = drag;
+
+            // 模拟一张彩色占位图
+            const color = Math.floor(Math.random()*16777215).toString(16);
+            card.innerHTML = `
+                <img src="https://via.placeholder.com/200x120/${color}/ffffff?text=Image+${imgCount}" class="w-full h-auto rounded">
+                <div class="text-[10px] text-gray-400 mt-1">采集时间: ${new Date().toLocaleTimeString()}</div>
+                <button onclick="this.parentElement.remove()" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+            `;
+            pool.prepend(card);
+        }
+
+        // 拖拽核心逻辑
+        function allowDrop(ev) {
+            ev.preventDefault();
+            ev.currentTarget.classList.add('drag-over');
+        }
+
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            const target = ev.currentTarget;
+            target.classList.remove('drag-over');
+            
+            const data = ev.dataTransfer.getData("text");
+            const draggedEl = document.getElementById(data);
+            
+            // 将图片移入对应的分类框，并调整样式
+            target.innerHTML = '';
+            const clonedImg = draggedEl.querySelector('img').cloneNode(true);
+            clonedImg.className = "w-full h-full object-cover rounded shadow-inner";
+            
+            // 增加覆盖层显示类型名
+            const label = document.createElement('div');
+            label.className = "absolute bottom-0 w-full bg-black/50 text-white text-[10px] py-1 text-center";
+            label.innerText = "已归档";
+
+            target.classList.remove('bg-gray-50');
+            target.classList.add('relative', 'p-0');
+            target.appendChild(clonedImg);
+            target.appendChild(label);
+            
+            // 归档后从左侧池中移除
+            draggedEl.remove();
+        }
+
+        // 离开拖拽区域时恢复样式
+        document.addEventListener('dragleave', (e) => {
+            if(e.target.classList && e.target.classList.contains('drop-zone')) {
+                e.target.classList.remove('drag-over');
+            }
+        });
+    </script>
+</body>
+</html>
