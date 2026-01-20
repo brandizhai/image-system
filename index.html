@@ -13,13 +13,27 @@
             display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
             z-index: 50; align-items: center; justify-content: center;
         }
+        /* 拖拽悬停样式 */
         .type-item.drag-over {
-            background-color: #dbeafe; border-color: #3b82f6;
+            background-color: #dbeafe; border-color: #3b82f6; transform: scale(1.02);
         }
         .photo-thumb {
-            cursor: grab; transition: transform 0.2s;
+            cursor: grab; transition: all 0.2s;
         }
         .photo-thumb:active { cursor: grabbing; }
+        
+        /* 已归档文件的小标签样式 */
+        .archived-file {
+            font-size: 11px;
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid #e5e7eb;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -32,15 +46,13 @@
             </button>
             <div class="guide-bubble">请点击此处，拍摄临柜业务所需材料</div>
         </div>
-
-        <div class="flex items-center">
+          <div class="flex items-center">
             <button onclick="openModal('云柜')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded shadow-lg flex items-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                 云柜拍照
             </button>
             <div class="guide-bubble">请点击此处，拍摄云柜业务所需材料</div>
         </div>
-    </div>
 
     <div id="cameraModal" class="modal-mask">
         <div class="bg-white w-11/12 h-5/6 rounded-xl shadow-2xl flex flex-col overflow-hidden">
@@ -50,27 +62,26 @@
                     <button onclick="takePhoto()" class="bg-blue-500 text-white px-6 py-1 rounded hover:bg-blue-400 text-sm font-bold">拍摄</button>
                     <button onclick="closeModal()" class="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-500 text-sm">提交</button>
                 </div>
-                <span id="modalTitle" class="text-white font-medium">高拍仪采集终端</span>
+                <span id="modalTitle" class="text-white font-medium">影像采集终端</span>
                 <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
 
             <div class="flex-1 flex overflow-hidden">
-                <div class="w-64 bg-gray-50 border-r p-4 overflow-y-auto space-y-2">
-                    <h4 class="text-xs font-bold text-gray-500 mb-3 uppercase">影像类型</h4>
-                    <div id="typeList">
+                <div class="w-72 bg-gray-50 border-r p-4 overflow-y-auto space-y-3">
+                    <h4 class="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">归档分类</h4>
+                    <div id="typeList" class="space-y-2">
                         </div>
                 </div>
 
                 <div class="flex-1 bg-black flex items-center justify-center relative">
                     <div class="text-white text-center opacity-50">
-                        <svg class="w-20 h-20 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                        <p>摄像头视频流实时预览中...</p>
+                        <svg class="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        <p>摄像头实时画面</p>
                     </div>
-                    <div class="absolute bottom-4 right-4 bg-white/20 text-white text-[10px] px-2 py-1 rounded">1920 x 1080</div>
                 </div>
 
                 <div class="w-72 bg-gray-100 border-l p-4 overflow-y-auto">
-                    <h4 class="text-xs font-bold text-gray-500 mb-3 uppercase">已拍摄照片 (拖拽归档)</h4>
+                    <h4 class="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">待归档照片 (请拖拽)</h4>
                     <div id="photoPool" class="space-y-4">
                         </div>
                 </div>
@@ -79,38 +90,36 @@
     </div>
 
     <script>
-        const types = [
-            "投保人身份证", "投保人人脸正面照", 
-            "被保人身份证", "被保人人脸正面照", 
-            "新投保人身份证", "新投保人人脸正面照", 
-            "其他"
-        ];
-        
+        const types = ["投保人身份证", "投保人人脸正面照", "被保人身份证", "其他"];
         let photoCount = 0;
-        const typeData = {}; // 存储每个类型的数量
 
-        // 初始化左侧列表
+        // 初始化左侧分类
         function initTypes() {
             const list = document.getElementById('typeList');
             types.forEach(name => {
-                typeData[name] = 0;
                 const div = document.createElement('div');
-                div.className = "type-item border-2 border-transparent bg-white p-3 rounded-lg shadow-sm text-sm transition-all flex justify-between items-center";
+                // 增加 flex-col 允许内部垂直排列
+                div.className = "type-item border-2 border-dashed border-gray-200 bg-white p-3 rounded-lg transition-all flex flex-col";
                 div.dataset.name = name;
+                
                 div.innerHTML = `
-                    <span class="text-gray-700 font-medium">${name}</span>
-                    <span class="count-badge bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-[10px] font-bold hidden">0</span>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-gray-700 font-bold text-sm">${name}</span>
+                        <span class="count-badge bg-blue-500 text-white px-2 py-0.5 rounded-full text-[10px] hidden">0</span>
+                    </div>
+                    <div class="file-container flex flex-col space-y-1"></div>
                 `;
-                // 拖拽事件
+
+                // 绑定拖拽事件
                 div.ondragover = (e) => { e.preventDefault(); div.classList.add('drag-over'); };
                 div.ondragleave = () => div.classList.remove('drag-over');
                 div.ondrop = (e) => handleDrop(e, name);
+                
                 list.appendChild(div);
             });
         }
 
         function openModal(title) {
-            document.getElementById('modalTitle').innerText = title + '业务影像采集';
             document.getElementById('cameraModal').style.display = 'flex';
         }
 
@@ -118,48 +127,69 @@
             document.getElementById('cameraModal').style.display = 'none';
         }
 
-        // 拍照模拟
+        // 拍摄：生成右侧缩略图
         function takePhoto() {
             photoCount++;
             const pool = document.getElementById('photoPool');
-            const id = 'photo_' + photoCount;
+            const id = 'img_' + photoCount;
+            const fileName = `IMG_2024_${photoCount.toString().padStart(3, '0')}.jpg`;
             const color = Math.floor(Math.random()*16777215).toString(16);
             
             const card = document.createElement('div');
-            card.className = "photo-thumb bg-white p-1 border rounded shadow-sm relative group";
+            card.className = "photo-thumb bg-white p-2 border rounded-lg shadow-sm group";
             card.draggable = true;
             card.id = id;
-            card.ondragstart = (e) => e.dataTransfer.setData("text", id);
+            card.dataset.filename = fileName; // 存储文件名
+            
+            // 传递 ID 到拖拽事件
+            card.ondragstart = (e) => {
+                e.dataTransfer.setData("text/plain", id);
+                card.classList.add('opacity-50');
+            };
+            card.ondragend = () => card.classList.remove('opacity-50');
             
             card.innerHTML = `
-                <img src="https://via.placeholder.com/240x160/${color}/ffffff?text=IMG_${photoCount}" class="w-full rounded">
-                <div class="text-[10px] text-gray-400 mt-1">#${photoCount} 待归档</div>
+                <img src="https://via.placeholder.com/240x160/${color}/ffffff?text=${photoCount}" class="w-full rounded mb-2">
+                <div class="text-[11px] text-gray-500 font-mono truncate">${fileName}</div>
             `;
             pool.prepend(card);
         }
 
-        // 拖拽释放处理
+        // 核心逻辑：处理释放
         function handleDrop(e, typeName) {
             e.preventDefault();
-            const typeItem = e.currentTarget;
-            typeItem.classList.remove('drag-over');
+            const targetTypeBox = e.currentTarget;
+            targetTypeBox.classList.remove('drag-over');
             
-            const photoId = e.dataTransfer.getData("text");
-            const photoEl = document.getElementById(photoId);
+            const photoId = e.dataTransfer.getData("text/plain");
+            const originalPhoto = document.getElementById(photoId);
             
-            if (photoEl) {
-                // 更新计数
-                typeData[typeName]++;
-                const badge = typeItem.querySelector('.count-badge');
-                badge.innerText = typeData[typeName];
+            if (originalPhoto) {
+                const fileName = originalPhoto.dataset.filename;
+                const fileContainer = targetTypeBox.querySelector('.file-container');
+                
+                // 1. 创建左侧展示的小标签
+                const fileTag = document.createElement('div');
+                fileTag.className = "archived-file";
+                fileTag.innerHTML = `
+                    <span class="truncate w-40 text-gray-600">${fileName}</span>
+                    <svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                `;
+                
+                // 2. 将标签添加到对应分类下
+                fileContainer.appendChild(fileTag);
+                
+                // 3. 更新计数徽章
+                const badge = targetTypeBox.querySelector('.count-badge');
+                const currentCount = fileContainer.children.length;
+                badge.innerText = currentCount;
                 badge.classList.remove('hidden');
                 
-                // 视觉反馈：类型项闪烁一下
-                typeItem.classList.add('bg-blue-50');
-                setTimeout(() => typeItem.classList.remove('bg-blue-50'), 500);
+                // 4. 样式反馈
+                targetTypeBox.classList.replace('border-gray-200', 'border-blue-400');
                 
-                // 从右侧移除
-                photoEl.remove();
+                // 5. 从右侧待处理区移除
+                originalPhoto.remove();
             }
         }
 
