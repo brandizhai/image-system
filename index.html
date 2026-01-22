@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>高拍仪影像归档系统 - OCR增强版</title>
+    <title>高拍仪影像归档系统 - 增强预览版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
          @keyframes hintArrow {
@@ -10,74 +10,61 @@
             50% { transform: translateX(-8px); }
         }
         .guide-hint {
-            position: relative;
-            background: #fff1f2;
-            border: 1px solid #fda4af;
-            color: #e11d48;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
+            position: relative; background: #fff1f2; border: 1px solid #fda4af;
+            color: #e11d48; padding: 6px 12px; border-radius: 6px;
+            font-size: 14px; display: flex; align-items: center;
             animation: hintArrow 2s infinite ease-in-out;
         }
         .guide-hint::before {
-            content: '';
-            position: absolute;
-            left: -12px;
-            top: 50%;
-            transform: translateY(-50%);
-            border: 6px solid transparent;
-            border-right-color: #fda4af;
+            content: ''; position: absolute; left: -12px; top: 50%;
+            transform: translateY(-50%); border: 6px solid transparent; border-right-color: #fda4af;
         }
         .modal-mask {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-            z-index: 50; align-items: center; justify-content: center;
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+            z-index: 50; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+        }
+        #viewerModal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+            z-index: 100; align-items: center; justify-content: center; cursor: zoom-out;
         }
         .type-item.drag-over { background-color: #dbeafe; border-color: #3b82f6; }
         .photo-thumb { cursor: grab; transition: transform 0.2s; }
-        .photo-thumb:active { cursor: grabbing; }
         
         .display-box {
-            border: 2px dashed #e2e8f0;
-            min-height: 180px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            background: #fff;
-            transition: all 0.3s;
-            padding: 12px;
+            border: 2px dashed #e2e8f0; min-height: 220px;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: flex-start; background: #fff;
+            transition: all 0.3s; padding: 12px; border-radius: 12px;
+            position: relative;
         }
-        .display-box.has-data { border: 2px solid #3b82f6; background: #f0f7ff; }
+        .display-box.has-data { border: 2px solid #3b82f6; background: #f8fafc; }
         
-        /* 结果标签样式 */
         .result-tag {
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-            display: inline-block;
-            margin-bottom: 4px;
+            padding: 2px 6px; border-radius: 4px; font-size: 11px;
+            font-weight: bold; display: inline-block; margin-bottom: 4px;
         }
         .tag-ocr-pass { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
-        .tag-sim-pass { background-color: #fef9c3; color: #a16207; border: 1px solid #fef08a; }
         .tag-ocr-nopass { background-color: #fae1dc; color: #f23535; border: 1px solid #f47564; }
+        .tag-sim-pass { background-color: #fef9c3; color: #a16207; border: 1px solid #fef08a; }
         
-        /* OCR 详情文字 */
         .ocr-details {
-            font-size: 11px;
-            color: #475569;
-            line-height: 1.4;
-            background: #fff;
-            padding: 4px 8px;
-            border-radius: 4px;
-            border: 1px solid #e2e8f0;
-            width: 100%;
+            font-size: 11px; color: #475569; line-height: 1.4;
+            background: #fff; padding: 6px; border-radius: 4px;
+            border: 1px solid #e2e8f0; width: 100%;
         }
+
+        /* 新增：主界面删除按钮样式 */
+        .delete-btn {
+            position: absolute; top: -8px; right: -8px;
+            background: #ef4444; color: white; width: 22px; height: 22px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 14px; opacity: 0; transition: opacity 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10;
+        }
+        .display-box:hover .delete-btn { opacity: 1; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-gray-50 min-h-screen">
 
     <div class="p-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-10 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
@@ -86,9 +73,7 @@
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path></svg>
                     临柜拍照
                 </button>
-                <div class="guide-hint">
-                    <span class="font-bold mr-1">☚</span> 请点击拍摄临柜材料
-                </div>
+                <div class="guide-hint"><span class="font-bold mr-1">☚</span> 请点击拍摄临柜材料</div>
             </div>
 
             <div class="flex items-center space-x-6">
@@ -96,277 +81,235 @@
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                     云柜拍照
                 </button>
-                <div class="guide-hint">
-                    <span class="font-bold mr-1">☚</span> 请点击拍摄云柜材料
-                </div>
+                <div class="guide-hint"><span class="font-bold mr-1">☚</span> 请点击拍摄云柜材料</div>
             </div>
         </div>
     </div>
 
     <div class="p-8">
         <h3 class="text-lg font-bold text-gray-700 mb-6 flex items-center">
-            <span class="w-1 h-6 bg-blue-600 mr-2"></span>
-            当前采集预览：<span id="currentBizText" class="ml-2 text-blue-600">待选择业务</span>
+            <span class="w-1.5 h-6 bg-blue-600 mr-3 rounded-full"></span>
+            当前采集结果展示：<span id="currentBizText" class="ml-2 text-blue-600">待选择业务</span>
         </h3>
         <div id="mainGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
     </div>
 
     <div id="cameraModal" class="modal-mask">
-        <div class="bg-white w-11/12 h-5/6 rounded-xl shadow-2xl flex flex-col overflow-hidden">
-            <div class="bg-gray-800 p-4 flex justify-between items-center">
-                <div class="flex space-x-4">
-                    <button onclick="takePhoto()" class="bg-blue-500 text-white px-6 py-1 rounded hover:bg-blue-400 text-sm font-bold">开始拍摄</button>
-                    <button onclick="submitArchive()" class="bg-green-600 text-white px-6 py-1 rounded hover:bg-green-500 text-sm font-bold">确认提交</button>
+        <div class="bg-white w-11/12 h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="bg-gray-900 p-4 flex justify-between items-center text-white">
+                <div class="flex space-x-3">
+                    <button onclick="takePhoto()" class="bg-blue-500 hover:bg-blue-400 px-6 py-2 rounded-lg font-bold transition-colors">📷 开始拍照</button>
+                    <button onclick="submitArchive()" class="bg-emerald-500 hover:bg-emerald-400 px-6 py-2 rounded-lg font-bold transition-colors">✅ 确认提交</button>
                 </div>
-                <span id="modalTitle" class="text-white font-medium">影像采集终端</span>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                <div class="text-lg font-medium" id="modalTitle">影像采集终端</div>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white text-3xl">&times;</button>
             </div>
+            
             <div class="flex-1 flex overflow-hidden">
-                <div class="w-64 bg-gray-50 border-r p-4 overflow-y-auto" id="modalTypeList"></div>
-                <div class="flex-1 bg-black flex items-center justify-center">
-                    <p class="text-gray-500">高拍仪画面载入中...</p>
+                <div class="w-72 bg-gray-50 border-r p-4 overflow-y-auto" id="modalTypeList"></div>
+                
+                <div class="flex-1 bg-black flex items-center justify-center relative">
+                    <div class="text-gray-600 text-center">
+                        <div class="w-16 h-16 border-4 border-gray-800 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                        高拍仪视频流加载中...
+                    </div>
                 </div>
+
                 <div class="w-80 bg-gray-100 border-l p-4 overflow-y-auto">
-                    <h4 class="text-xs font-bold text-gray-500 mb-3 uppercase tracking-widest">待归档照片 (拖拽至左侧)</h4>
+                    <h4 class="text-xs font-black text-gray-400 mb-4 uppercase tracking-widest">待归档照片 (拖拽至左侧分类)</h4>
                     <div id="photoPool" class="space-y-4"></div>
                 </div>
             </div>
         </div>
     </div>
 
+    <div id="viewerModal" onclick="this.style.display='none'">
+        <img id="viewerImg" src="" class="max-w-[90%] max-h-[90%] shadow-2xl rounded border-4 border-white">
+        <div class="absolute top-5 right-5 text-white text-sm bg-black/50 px-4 py-2 rounded-full">点击任意位置退出预览</div>
+    </div>
+
     <script>
         const types = [
             "投保人身份证正面", "投保人身份证反面", "投保人人像正面照", 
-            "被保人身份证正面", "被保人身份证反面", "被保人人像正面照", 
-            "新投保人身份证正面", "新投保人身份证反面", "新投保人人像正面照", "其他"
+            "被保人身份证正面", "被保人身份证反面", "被保人人像正面照", "其他"
         ];
         
         let tempStorage = {};
+        types.forEach(t => tempStorage[t] = []);
 
+        // 初始化主界面网格
         function initMainGrid() {
+            renderMainGrid();
+        }
+
+        // 重新渲染主界面网格（支持删除后刷新）
+        function renderMainGrid() {
             const grid = document.getElementById('mainGrid');
             grid.innerHTML = '';
-            types.forEach(name => {
-                grid.innerHTML += `
-                    <div id="main-box-${name}" class="display-box rounded-lg shadow-sm">
-                        <span class="text-xs font-bold text-gray-500 mb-3">${name}</span>
-                        <div class="icon-placeholder text-gray-200 mb-2">
-                            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        </div>
-                        <div class="preview-container flex flex-wrap gap-1 mb-3"></div>
-                        <div id="result-${name}" class="w-full"></div>
-                    </div>`;
-            });
-        }
 
-        function openModal(biz) {
-            document.getElementById('currentBizText').innerText = biz + '业务';
-            document.getElementById('cameraModal').style.display = 'flex';
-            const list = document.getElementById('modalTypeList');
-            list.innerHTML = '<h4 class="text-xs font-bold text-gray-400 mb-3 uppercase">影像类型</h4>';
-            types.forEach(name => {
-                tempStorage[name] = [];
-                list.innerHTML += `
-                    <div class="type-item border bg-white p-3 rounded-lg mb-2 text-sm" ondragover="event.preventDefault()" ondrop="handleDrop(event, '${name}')">
-                        <div class="flex justify-between">
-                            <span class="font-medium">${name}</span>
-                            <span id="badge-${name}" class="bg-blue-500 text-white px-2 rounded-full text-[10px] hidden">0</span>
-                        </div>
-                        <div id="list-${name}" class="text-[10px] text-gray-400 mt-1"></div>
-                    </div>`;
-            });
-        }
-
-        function takePhoto() {
-            const id = 'p_' + Date.now();
-            const fileName = `IMG_${id.slice(-6)}.jpg`;
-            const dummySrc = `https://via.placeholder.com/300x200/${Math.floor(Math.random()*16777215).toString(16)}/ffffff?text=PHOTO`;
-            
-            const card = document.createElement('div');
-            card.className = "photo-thumb bg-white p-2 border rounded shadow mb-3";
-            card.draggable = true;
-            card.id = id;
-            card.dataset.filename = fileName;
-            card.dataset.src = dummySrc;
-            card.ondragstart = (e) => e.dataTransfer.setData("text", id);
-            card.innerHTML = `<img src="${dummySrc}" class="w-full rounded mb-1"><span class="text-[10px] text-gray-500">${fileName}</span>`;
-            document.getElementById('photoPool').prepend(card);
-        }
-
-        function handleDrop(e, typeName) {
-            const id = e.dataTransfer.getData("text");
-            const el = document.getElementById(id);
-            if(!el) return;
-
-            tempStorage[typeName].push({ src: el.dataset.src, name: el.dataset.filename });
-            document.getElementById(`badge-${typeName}`).innerText = tempStorage[typeName].length;
-            document.getElementById(`badge-${typeName}`).classList.remove('hidden');
-            
-            const entry = document.createElement('div');
-            entry.className = "truncate border-l-2 border-blue-400 pl-1 mt-1";
-            entry.innerText = el.dataset.filename;
-            document.getElementById(`list-${typeName}`).appendChild(entry);
-            el.remove();
-        }
-
-        function submitArchive() {
             for (let type in tempStorage) {
-                if (tempStorage[type].length > 0) {
-                    const box = document.getElementById(`main-box-${type}`);
-                    const res = document.getElementById(`result-${type}`);
-                    const pre = box.querySelector('.preview-container');
-                    
-                    box.classList.add('has-data');
-                    box.querySelector('.icon-placeholder').classList.add('hidden');
-                    pre.innerHTML = '';
-                    res.innerHTML = '';
-
-                    // 1. 回显图片
-                    tempStorage[type].forEach(item => {
-                        pre.innerHTML += `<img src="${item.src}" class="w-14 h-10 object-cover rounded border shadow-sm">`;
+                const files = tempStorage[type];
+                
+                if (files.length === 0) {
+                    grid.insertAdjacentHTML('beforeend', createBoxHtml(type, 0, null));
+                } else {
+                    files.forEach((file, index) => {
+                        grid.insertAdjacentHTML('beforeend', createBoxHtml(type, index, file));
                     });
+                }
+            }
+        }
 
-                    // 2. 模拟 OCR 逻辑
-                    if (type.includes("身份证正面")) {
+        function createBoxHtml(name, index, file) {
+            const id = index === 0 ? name : `${name}_${index}`;
+            const isHasData = file !== null;
+            
+            // 模拟识别信息
+            let resultHtml = '';
+            if (isHasData) {
+                if (name.includes("身份证正面")) {
                         const nameMap = {"投保人": "张建国", "被保人": "张小明", "新投保人": "李美华"};
-                        const prefix = type.split('身份证')[0];
+                        const prefix = name.split('身份证')[0];
                         const mockName = nameMap[prefix] || "王五";
                         
-                        res.innerHTML = `
+                        resultHtml = `
                             <div class="tag-ocr-pass result-tag">OCR识别：通过</div>
                             <div class="ocr-details">
                                 <b>姓名：</b>${mockName}<br>
                                 <b>号码：</b>3201198765571524
                             </div>`;
-                    } else if (type.includes("身份证反面")) {
-                        res.innerHTML = `
+                    } else if (name.includes("身份证反面")) {
+                        resultHtml = `
                             <div class="tag-ocr-nopass result-tag">OCR识别：不通过</div>
                             <div class="ocr-details">
                                 <b>签发：</b>南京市公安局<br>
                                 <b>有效期：</b>2020-2040
                             </div>`;
-                    } else if (type.includes("人像正面照")) {
-                        res.innerHTML = `<div class="tag-sim-pass result-tag">人脸相似度：95%</div>`;
-                    }
+                    } else if (name.includes("人像正面照")) {
+                        resultHtml = `<div class="tag-sim-pass result-tag">人脸相似度：95%</div>`;
+                    } else {
+                    resultHtml = `<div class="tag-ocr-pass result-tag">已归档</div>`;
                 }
             }
-            document.getElementById('cameraModal').style.display = 'none';
+
+            return `
+                <div id="main-box-${id}" class="display-box shadow-sm ${isHasData ? 'has-data' : ''}">
+                    ${isHasData ? `<div class="delete-btn" title="删除" onclick="deleteMainPhoto('${name}', ${index})">×</div>` : ''}
+                    <span class="text-xs font-bold text-gray-400 mb-3">${name}${index > 0 ? ' ('+(index+1)+')' : ''}</span>
+                    
+                    <div class="icon-placeholder text-gray-200 mt-4 ${isHasData ? 'hidden' : ''}">
+                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+
+                    ${isHasData ? `
+                        <div class="preview-container w-full flex justify-center mb-3">
+                            <img src="${file.src}" class="w-full h-24 object-cover rounded-lg border shadow-sm cursor-zoom-in hover:opacity-80" onclick="previewImage('${file.src}')">
+                        </div>
+                        <div class="w-full">${resultHtml}</div>
+                    ` : ''}
+                </div>`;
+        }
+
+        // 主界面删除照片逻辑
+        function deleteMainPhoto(typeName, index) {
+            if(confirm(`确定要删除这张 ${typeName} 吗？`)) {
+                tempStorage[typeName].splice(index, 1);
+                renderMainGrid();
+            }
+        }
+
+        // --- 弹窗相关逻辑 ---
+        function openModal(biz) {
+            document.getElementById('currentBizText').innerText = biz + '业务';
+            document.getElementById('cameraModal').style.display = 'flex';
+            renderTypeList();
+        }
+
+        function renderTypeList() {
+            const list = document.getElementById('modalTypeList');
+            list.innerHTML = '<h4 class="text-xs font-black text-gray-400 mb-4 uppercase">影像分类</h4>';
+            
+            types.forEach(typeName => {
+                const files = tempStorage[typeName];
+                const typeItem = document.createElement('div');
+                typeItem.className = `type-item border p-3 rounded-xl mb-3 transition-all ${files.length > 0 ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'}`;
+                
+                typeItem.ondragover = (e) => { e.preventDefault(); typeItem.classList.add('drag-over'); };
+                typeItem.ondragleave = () => typeItem.classList.remove('drag-over');
+                typeItem.ondrop = (e) => { typeItem.classList.remove('drag-over'); handleDrop(e, typeName); };
+
+                let filesHtml = files.map((file, idx) => `
+                    <div class="group relative flex items-center p-1.5 bg-white rounded-lg mt-2 border border-gray-200 hover:shadow-md transition-all">
+                        <img src="${file.src}" class="w-10 h-10 object-cover rounded cursor-zoom-in" onclick="previewImage('${file.src}')">
+                        <span class="text-[10px] text-gray-500 truncate flex-1 ml-2">${file.name}</span>
+                        <button onclick="removeFile('${typeName}', ${idx})" class="opacity-0 group-hover:opacity-100 absolute -right-2 -top-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow-lg">×</button>
+                    </div>
+                `).join('');
+
+                typeItem.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-bold text-gray-700">${typeName}</span>
+                        <span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-[10px] ${files.length ? '' : 'hidden'}">${files.length}</span>
+                    </div>
+                    <div class="space-y-1">${filesHtml || '<div class="text-[10px] text-gray-300 italic mt-1">请拖入照片</div>'}</div>
+                `;
+                list.appendChild(typeItem);
+            });
+        }
+
+        function takePhoto() {
+            const id = 'p_' + Date.now();
+            const fileName = `IMG_${id.slice(-4)}.jpg`;
+            const color = Math.floor(Math.random()*16777215).toString(16);
+            const dummySrc = `https://via.placeholder.com/600x400/${color}/ffffff?text=${fileName}`;
+            
+            const card = document.createElement('div');
+            card.className = "photo-thumb bg-white p-2 rounded-lg shadow-sm border border-gray-200 group relative";
+            card.draggable = true;
+            card.id = id;
+            card.dataset.filename = fileName;
+            card.dataset.src = dummySrc;
+            card.ondragstart = (e) => e.dataTransfer.setData("text", id);
+            card.innerHTML = `
+                <img src="${dummySrc}" class="w-full h-32 object-cover rounded mb-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-mono text-gray-400">${fileName}</span>
+                    <button onclick="previewImage('${dummySrc}')" class="text-blue-500 text-[10px] hover:underline">点击放大</button>
+                </div>`;
+            document.getElementById('photoPool').prepend(card);
+        }
+
+        function handleDrop(e, targetType) {
+            e.preventDefault();
+            const photoId = e.dataTransfer.getData("text");
+            if (!photoId) return;
+            const el = document.getElementById(photoId);
+            if (el) {
+                tempStorage[targetType].push({ src: el.dataset.src, name: el.dataset.filename });
+                el.remove();
+                renderTypeList();
+            }
+        }
+
+        function removeFile(typeName, index) {
+            tempStorage[typeName].splice(index, 1);
+            renderTypeList();
+        }
+
+        function previewImage(src) {
+            const modal = document.getElementById('viewerModal');
+            document.getElementById('viewerImg').src = src;
+            modal.style.display = 'flex';
+        }
+
+        function submitArchive() {
+            renderMainGrid();
+            closeModal();
         }
 
         function closeModal() { document.getElementById('cameraModal').style.display = 'none'; }
-        initMainGrid();
-
-
-types.forEach(t => tempStorage[t] = []);
-
-// 初始化主界面
-function initMainGrid() {
-    const grid = document.getElementById('mainGrid');
-    grid.innerHTML = types.map(name => `
-        <div id="main-box-${name}" class="display-box rounded-lg shadow-sm">
-            <span class="text-xs font-bold text-gray-500 mb-3">${name}</span>
-            <div class="icon-placeholder text-gray-200 mb-2">
-                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-            </div>
-            <div class="preview-container flex flex-wrap gap-1 mb-3"></div>
-            <div id="result-${name}" class="w-full"></div>
-        </div>`).join('');
-}
-
-// 打开弹窗并渲染左侧列表
-function openModal(biz) {
-    document.getElementById('currentBizText').innerText = biz + '业务';
-    document.getElementById('cameraModal').style.display = 'flex';
-    renderTypeList();
-}
-
-// 核心渲染函数：渲染左侧影像类型列表
-function renderTypeList() {
-    const list = document.getElementById('modalTypeList');
-    list.innerHTML = '<h4 class="text-xs font-bold text-gray-400 mb-3 uppercase">影像类型</h4>';
-    
-    types.forEach(typeName => {
-        const files = tempStorage[typeName];
-        const typeItem = document.createElement('div');
-        typeItem.className = `type-item border bg-white p-3 rounded-lg mb-2 text-sm transition-all ${files.length > 0 ? 'border-blue-200 shadow-sm' : 'border-gray-100'}`;
-        typeItem.ondragover = (e) => { e.preventDefault(); typeItem.classList.add('drag-over'); };
-        typeItem.ondragleave = () => typeItem.classList.remove('drag-over');
-        typeItem.ondrop = (e) => {
-            typeItem.classList.remove('drag-over');
-            handleDrop(e, typeName);
-        };
-
-        let filesHtml = files.map((file, index) => `
-            <div class="group relative flex items-center p-1 bg-gray-50 rounded mt-1 border border-transparent hover:border-blue-300 transition-all cursor-grab" 
-                 draggable="true" 
-                 ondragstart="event.dataTransfer.setData('moveData', JSON.stringify({from:'${typeName}', index:${index}}))">
-                <img src="${file.src}" class="w-8 h-8 object-cover rounded mr-2">
-                <span class="text-[10px] text-gray-600 truncate flex-1">${file.name}</span>
-                <button onclick="removeFile('${typeName}', ${index})" class="hidden group-hover:flex absolute -right-1 -top-1 bg-red-500 text-white rounded-full w-4 h-4 items-center justify-center text-[10px]">×</button>
-            </div>
-        `).join('');
-
-        typeItem.innerHTML = `
-            <div class="flex justify-between items-center">
-                <span class="font-bold text-gray-700">${typeName}</span>
-                <span class="bg-blue-500 text-white px-2 rounded-full text-[10px] ${files.length ? '' : 'hidden'}">${files.length}</span>
-            </div>
-            <div class="mt-2 space-y-1">${filesHtml || '<div class="text-[10px] text-gray-300 italic">暂无图片</div>'}</div>
-        `;
-        list.appendChild(typeItem);
-    });
-}
-
-// 处理拖拽投放（支持从右侧池子拖入，也支持左侧跨类型拖动）
-function handleDrop(e, targetType) {
-    e.preventDefault();
-    const photoId = e.dataTransfer.getData("text"); // 从右侧拖入
-    const moveData = e.dataTransfer.getData("moveData"); // 左侧内部移动
-
-    if (photoId) {
-        const el = document.getElementById(photoId);
-        if (el) {
-            tempStorage[targetType].push({ id: photoId, src: el.dataset.src, name: el.dataset.filename });
-            el.remove();
-        }
-    } else if (moveData) {
-        const { from, index } = JSON.parse(moveData);
-        if (from === targetType) return;
-        const [file] = tempStorage[from].splice(index, 1);
-        tempStorage[targetType].push(file);
-    }
-    renderTypeList();
-}
-
-// 删除文件并归还到右侧池子（可选，这里演示直接删除）
-function removeFile(typeName, index) {
-    const [removed] = tempStorage[typeName].splice(index, 1);
-    // 如果想让删除的图片回到右侧，可以在这里重新调用生成右侧卡片的逻辑
-    // 为了简单，我们这里直接重新渲染左侧
-    renderTypeList();
-}
-
-// 修改后的提交逻辑
-function submitArchive() {
-    types.forEach(type => {
-        const files = tempStorage[type];
-        const box = document.getElementById(`main-box-${type}`);
-        const res = document.getElementById(`result-${type}`);
-        const pre = box.querySelector('.preview-container');
         
-        if (files.length > 0) {
-            box.classList.add('has-data');
-            box.querySelector('.icon-placeholder').classList.add('hidden');
-            pre.innerHTML = files.map(f => `<img src="${f.src}" class="w-14 h-10 object-cover rounded border shadow-sm">`).join('');
-            
-            // OCR 模拟逻辑（保持不变...）
-            if (type.includes("身份证正面")) {
-                res.innerHTML = `<div class="tag-ocr-pass result-tag">OCR：通过</div><div class="ocr-details text-[10px]">已自动提取信息</div>`;
-            }
-        }
-    });
-    document.getElementById('cameraModal').style.display = 'none';
-}
+        initMainGrid();
     </script>
 </body>
 </html>
