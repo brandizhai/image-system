@@ -255,6 +255,118 @@
 
         function closeModal() { document.getElementById('cameraModal').style.display = 'none'; }
         initMainGrid();
+
+
+types.forEach(t => tempStorage[t] = []);
+
+// 初始化主界面
+function initMainGrid() {
+    const grid = document.getElementById('mainGrid');
+    grid.innerHTML = types.map(name => `
+        <div id="main-box-${name}" class="display-box rounded-lg shadow-sm">
+            <span class="text-xs font-bold text-gray-500 mb-3">${name}</span>
+            <div class="icon-placeholder text-gray-200 mb-2">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            </div>
+            <div class="preview-container flex flex-wrap gap-1 mb-3"></div>
+            <div id="result-${name}" class="w-full"></div>
+        </div>`).join('');
+}
+
+// 打开弹窗并渲染左侧列表
+function openModal(biz) {
+    document.getElementById('currentBizText').innerText = biz + '业务';
+    document.getElementById('cameraModal').style.display = 'flex';
+    renderTypeList();
+}
+
+// 核心渲染函数：渲染左侧影像类型列表
+function renderTypeList() {
+    const list = document.getElementById('modalTypeList');
+    list.innerHTML = '<h4 class="text-xs font-bold text-gray-400 mb-3 uppercase">影像类型</h4>';
+    
+    types.forEach(typeName => {
+        const files = tempStorage[typeName];
+        const typeItem = document.createElement('div');
+        typeItem.className = `type-item border bg-white p-3 rounded-lg mb-2 text-sm transition-all ${files.length > 0 ? 'border-blue-200 shadow-sm' : 'border-gray-100'}`;
+        typeItem.ondragover = (e) => { e.preventDefault(); typeItem.classList.add('drag-over'); };
+        typeItem.ondragleave = () => typeItem.classList.remove('drag-over');
+        typeItem.ondrop = (e) => {
+            typeItem.classList.remove('drag-over');
+            handleDrop(e, typeName);
+        };
+
+        let filesHtml = files.map((file, index) => `
+            <div class="group relative flex items-center p-1 bg-gray-50 rounded mt-1 border border-transparent hover:border-blue-300 transition-all cursor-grab" 
+                 draggable="true" 
+                 ondragstart="event.dataTransfer.setData('moveData', JSON.stringify({from:'${typeName}', index:${index}}))">
+                <img src="${file.src}" class="w-8 h-8 object-cover rounded mr-2">
+                <span class="text-[10px] text-gray-600 truncate flex-1">${file.name}</span>
+                <button onclick="removeFile('${typeName}', ${index})" class="hidden group-hover:flex absolute -right-1 -top-1 bg-red-500 text-white rounded-full w-4 h-4 items-center justify-center text-[10px]">×</button>
+            </div>
+        `).join('');
+
+        typeItem.innerHTML = `
+            <div class="flex justify-between items-center">
+                <span class="font-bold text-gray-700">${typeName}</span>
+                <span class="bg-blue-500 text-white px-2 rounded-full text-[10px] ${files.length ? '' : 'hidden'}">${files.length}</span>
+            </div>
+            <div class="mt-2 space-y-1">${filesHtml || '<div class="text-[10px] text-gray-300 italic">暂无图片</div>'}</div>
+        `;
+        list.appendChild(typeItem);
+    });
+}
+
+// 处理拖拽投放（支持从右侧池子拖入，也支持左侧跨类型拖动）
+function handleDrop(e, targetType) {
+    e.preventDefault();
+    const photoId = e.dataTransfer.getData("text"); // 从右侧拖入
+    const moveData = e.dataTransfer.getData("moveData"); // 左侧内部移动
+
+    if (photoId) {
+        const el = document.getElementById(photoId);
+        if (el) {
+            tempStorage[targetType].push({ id: photoId, src: el.dataset.src, name: el.dataset.filename });
+            el.remove();
+        }
+    } else if (moveData) {
+        const { from, index } = JSON.parse(moveData);
+        if (from === targetType) return;
+        const [file] = tempStorage[from].splice(index, 1);
+        tempStorage[targetType].push(file);
+    }
+    renderTypeList();
+}
+
+// 删除文件并归还到右侧池子（可选，这里演示直接删除）
+function removeFile(typeName, index) {
+    const [removed] = tempStorage[typeName].splice(index, 1);
+    // 如果想让删除的图片回到右侧，可以在这里重新调用生成右侧卡片的逻辑
+    // 为了简单，我们这里直接重新渲染左侧
+    renderTypeList();
+}
+
+// 修改后的提交逻辑
+function submitArchive() {
+    types.forEach(type => {
+        const files = tempStorage[type];
+        const box = document.getElementById(`main-box-${type}`);
+        const res = document.getElementById(`result-${type}`);
+        const pre = box.querySelector('.preview-container');
+        
+        if (files.length > 0) {
+            box.classList.add('has-data');
+            box.querySelector('.icon-placeholder').classList.add('hidden');
+            pre.innerHTML = files.map(f => `<img src="${f.src}" class="w-14 h-10 object-cover rounded border shadow-sm">`).join('');
+            
+            // OCR 模拟逻辑（保持不变...）
+            if (type.includes("身份证正面")) {
+                res.innerHTML = `<div class="tag-ocr-pass result-tag">OCR：通过</div><div class="ocr-details text-[10px]">已自动提取信息</div>`;
+            }
+        }
+    });
+    document.getElementById('cameraModal').style.display = 'none';
+}
     </script>
 </body>
 </html>
