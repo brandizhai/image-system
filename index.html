@@ -62,6 +62,23 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10;
         }
         .display-box:hover .delete-btn { opacity: 1; }
+
+        /* 新增：选中状态样式 */
+.photo-thumb.selected {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+    ring: 2px;
+    ring-color: #3b82f6;
+}
+.select-checkbox {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    z-index: 20;
+}
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -256,40 +273,85 @@
                 list.appendChild(typeItem);
             });
         }
+// 修改 takePhoto 函数，增加复选框
+function takePhoto() {
+    const id = 'p_' + Date.now();
+    const fileName = `IMG_${id.slice(-4)}.jpg`;
+    const color = Math.floor(Math.random()*16777215).toString(16);
+    const dummySrc = `https://via.placeholder.com/600x400/${color}/ffffff?text=${fileName}`;
+    
+    const card = document.createElement('div');
+    card.className = "photo-thumb bg-white p-2 rounded-lg shadow-sm border border-gray-200 group relative transition-all";
+    card.draggable = true;
+    card.id = id;
+    card.dataset.filename = fileName;
+    card.dataset.src = dummySrc;
 
-        function takePhoto() {
-            const id = 'p_' + Date.now();
-            const fileName = `IMG_${id.slice(-4)}.jpg`;
-            const color = Math.floor(Math.random()*16777215).toString(16);
-            const dummySrc = `https://via.placeholder.com/600x400/${color}/ffffff?text=${fileName}`;
-            
-            const card = document.createElement('div');
-            card.className = "photo-thumb bg-white p-2 rounded-lg shadow-sm border border-gray-200 group relative";
-            card.draggable = true;
-            card.id = id;
-            card.dataset.filename = fileName;
-            card.dataset.src = dummySrc;
-            card.ondragstart = (e) => e.dataTransfer.setData("text", id);
-            card.innerHTML = `
-                <img src="${dummySrc}" class="w-full h-32 object-cover rounded mb-2">
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] font-mono text-gray-400">${fileName}</span>
-                    <button onclick="previewImage('${dummySrc}')" class="text-blue-500 text-[10px] hover:underline">点击放大</button>
-                </div>`;
-            document.getElementById('photoPool').prepend(card);
-        }
+    // 拖拽开始逻辑：处理单选或多选
+    card.ondragstart = (e) => {
+        const selectedCards = document.querySelectorAll('.photo-thumb.has-selected');
+        let dragData = [];
 
-        function handleDrop(e, targetType) {
-            e.preventDefault();
-            const photoId = e.dataTransfer.getData("text");
-            if (!photoId) return;
-            const el = document.getElementById(photoId);
-            if (el) {
-                tempStorage[targetType].push({ src: el.dataset.src, name: el.dataset.filename });
-                el.remove();
-                renderTypeList();
-            }
+        // 如果拖拽的是已选中的卡片之一，则批量拖拽
+        if (card.classList.contains('has-selected')) {
+            selectedCards.forEach(c => {
+                dragData.push({ id: c.id, src: c.dataset.src, name: c.dataset.filename });
+            });
+        } else {
+            // 否则只拖拽当前项
+            dragData.push({ id: id, src: dummySrc, name: fileName });
         }
+        e.dataTransfer.setData("text", JSON.stringify(dragData));
+    };
+
+    card.innerHTML = `
+        <input type="checkbox" class="select-checkbox" onclick="toggleSelect(event, '${id}')">
+        <img src="${dummySrc}" class="w-full h-32 object-cover rounded mb-2">
+        <div class="flex justify-between items-center">
+            <span class="text-[10px] font-mono text-gray-400">${fileName}</span>
+            <button onclick="previewImage('${dummySrc}')" class="text-blue-500 text-[10px] hover:underline">预览</button>
+        </div>`;
+    
+    document.getElementById('photoPool').prepend(card);
+}
+
+// 新增：切换选中状态
+function toggleSelect(event, id) {
+    event.stopPropagation();
+    const card = document.getElementById(id);
+    if (event.target.checked) {
+        card.classList.add('has-selected', 'border-blue-500', 'ring-2', 'ring-blue-200');
+    } else {
+        card.classList.remove('has-selected', 'border-blue-500', 'ring-2', 'ring-blue-200');
+    }
+}
+
+// 修改 handleDrop 函数，支持解析 JSON 数据
+function handleDrop(e, targetType) {
+    e.preventDefault();
+    const rawData = e.dataTransfer.getData("text");
+    if (!rawData) return;
+
+    try {
+        const items = JSON.parse(rawData);
+        if (Array.isArray(items)) {
+            items.forEach(item => {
+                tempStorage[targetType].push({ src: item.src, name: item.name });
+                const el = document.getElementById(item.id);
+                if (el) el.remove();
+            });
+            renderTypeList();
+        }
+    } catch (err) {
+        // 兼容老版本的单字符串ID逻辑（如果有残留）
+        const el = document.getElementById(rawData);
+        if (el) {
+            tempStorage[targetType].push({ src: el.dataset.src, name: el.dataset.filename });
+            el.remove();
+            renderTypeList();
+        }
+    }
+}
 
         function removeFile(typeName, index) {
             tempStorage[typeName].splice(index, 1);
